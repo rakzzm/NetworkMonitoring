@@ -12,7 +12,10 @@ export default function ReportsPage() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    const [isMounted, setIsMounted] = useState(false);
+
     useEffect(() => {
+        setIsMounted(true);
         fetch('/api/reports')
             .then(res => res.json())
             .then(resData => {
@@ -24,6 +27,10 @@ export default function ReportsPage() {
                 setLoading(false);
             });
     }, []);
+
+
+
+    if (!isMounted) return null; 
 
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
