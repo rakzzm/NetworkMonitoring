@@ -16,14 +16,36 @@ export default function ReportsPage() {
 
     useEffect(() => {
         setIsMounted(true);
-        fetch('/api/reports')
-            .then(res => res.json())
+        
+        const token = localStorage.getItem('token');
+        const headers = {};
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        fetch('/api/reports', { headers })
+            .then(res => {
+                if (res.status === 401) {
+                    throw new Error('Unauthorized');
+                }
+                if (!res.ok) {
+                    throw new Error('Failed to fetch data');
+                }
+                return res.json();
+            })
             .then(resData => {
                 setData(resData);
                 setLoading(false);
             })
             .catch(err => {
                 console.error("Failed to fetch reports:", err);
+                if (err.message === 'Unauthorized') {
+                    // Optional: redirect to login
+                    // window.location.href = '/login';
+                    setData({ error: 'Unauthorized. Please log in.' });
+                } else {
+                    setData({ error: err.message });
+                }
                 setLoading(false);
             });
     }, []);
@@ -31,6 +53,28 @@ export default function ReportsPage() {
 
 
     if (!isMounted) return null; 
+
+    if (loading) {
+        return <div className="p-8 text-center">Generating Enterprise Reports...</div>;
+    }
+
+    if (!data || data.error) {
+        return (
+            <div className="p-8 text-center text-red-500">
+                <h3 className="font-bold">Access Denied or Error</h3>
+                <p>{data?.error || 'Failed to load reporting data.'}</p>
+                {data?.error && data.error.includes('Unauthorized') && (
+                    <a href="/login" className="btn btn-primary mt-4 inline-block">Go to Login</a>
+                )}
+            </div>
+        );
+    }
+
+    // Safety check for data structure to prevent crashes
+    const safeAvailability = data.availability || { routers: 0, switches: 0, accessPoints: 0, overall: 0 };
+    const safePerformance = data.performance || { routers: [] };
+    const safeTraffic = data.traffic || { byProtocol: [], topTalkers: [] };
+    const safeSecurity = data.security || { criticalAlerts: 0, warningAlerts: 0, informationalEvents: 0 };
 
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
@@ -48,9 +92,9 @@ export default function ReportsPage() {
 
     // Prepare data for charts
     const availabilityData = [
-        { name: 'Routers', value: data.availability.routers },
-        { name: 'Switches', value: data.availability.switches },
-        { name: 'Access Points', value: data.availability.accessPoints },
+        { name: 'Routers', value: safeAvailability.routers },
+        { name: 'Switches', value: safeAvailability.switches },
+        { name: 'Access Points', value: safeAvailability.accessPoints },
     ];
 
     return (
@@ -88,7 +132,7 @@ export default function ReportsPage() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                                 <h3 className="text-gray-500 text-sm font-medium">Overall Network Uptime</h3>
-                                <div className="text-4xl font-bold text-green-500 mt-2">{data.availability.overall}%</div>
+                                <div className="text-4xl font-bold text-green-500 mt-2">{safeAvailability.overall}%</div>
                                 <div className="text-xs text-gray-400 mt-1">SLA Target: 99.99%</div>
                             </div>
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -126,7 +170,7 @@ export default function ReportsPage() {
                             <h3 className="text-lg font-semibold mb-6">Router Hardware Health (CPU & Memory)</h3>
                             <div className="h-96 w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={data.performance.routers} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                    <BarChart data={safePerformance.routers} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                         <XAxis dataKey="name" />
                                         <YAxis />
@@ -179,7 +223,7 @@ export default function ReportsPage() {
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
                                             <Pie
-                                                data={data.traffic.byProtocol}
+                                                data={safeTraffic.byProtocol}
                                                 cx="50%"
                                                 cy="50%"
                                                 innerRadius={60}
@@ -190,7 +234,7 @@ export default function ReportsPage() {
                                                 nameKey="protocol"
                                                 label
                                             >
-                                                {data.traffic.byProtocol.map((entry, index) => (
+                                                {safeTraffic.byProtocol.map((entry, index) => (
                                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                                 ))}
                                             </Pie>
@@ -205,7 +249,7 @@ export default function ReportsPage() {
                                 <h3 className="text-lg font-semibold mb-6">Top Talkers (Source IPs)</h3>
                                 <div className="h-80">
                                      <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={data.traffic.topTalkers} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                                        <BarChart data={safeTraffic.topTalkers} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
                                             <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                                             <XAxis type="number" hide />
                                             <YAxis dataKey="source_ip" type="category" width={110} />
@@ -224,12 +268,12 @@ export default function ReportsPage() {
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-red-500">
                                 <h3 className="text-gray-500 text-sm font-medium">Critical Alerts</h3>
-                                <div className="text-3xl font-bold text-red-500 mt-2">{data.security.criticalAlerts}</div>
+                                <div className="text-3xl font-bold text-red-500 mt-2">{safeSecurity.criticalAlerts}</div>
                                 <div className="text-xs text-gray-400 mt-1">Requires immediate attention</div>
                             </div>
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-yellow-500">
                                 <h3 className="text-gray-500 text-sm font-medium">Warning Events</h3>
-                                <div className="text-3xl font-bold text-yellow-500 mt-2">{data.security.warningAlerts}</div>
+                                <div className="text-3xl font-bold text-yellow-500 mt-2">{safeSecurity.warningAlerts}</div>
                                 <div className="text-xs text-gray-400 mt-1">Potential issues detected</div>
                             </div>
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-green-500">
@@ -255,7 +299,7 @@ export default function ReportsPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
-                                        {data.security.recentAlerts.map((alert, idx) => (
+                                        {(safeSecurity.recentAlerts || []).map((alert, idx) => (
                                             <tr key={idx} className="hover:bg-gray-50 transition-colors">
                                                 <td className="px-6 py-3 text-gray-500">{new Date(alert.created_at).toLocaleString()}</td>
                                                 <td className="px-6 py-3">
