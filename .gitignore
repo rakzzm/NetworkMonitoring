@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local DB
+*.db
+
+# Firebase Credentials
+networkmanager-*.json
