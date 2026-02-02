@@ -1,7 +1,7 @@
 
 import admin from 'firebase-admin';
 
-import serviceAccount from './networkmanager-811c9-firebase-adminsdk-fbsvc-b8eeaf9a60.json';
+const serviceAccount = require('./networkmanager-811c9-firebase-adminsdk-fbsvc-b8eeaf9a60.json');
 
 if (!admin.apps.length) {
     try {
