@@ -54,6 +54,13 @@ export default function Sidebar() {
             ] 
         },
         { 
+            id: 'analytics', 
+            label: 'Analytics', 
+            subItems: [
+                { label: 'Reports', path: '/reports', icon: Icons.reports },
+            ] 
+        },
+        { 
             id: 'system', 
             label: 'System', 
             subItems: [
