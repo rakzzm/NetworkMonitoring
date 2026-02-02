@@ -72,6 +72,8 @@ export default function Sidebar() {
         document.documentElement.style.setProperty('--sidebar-width', width);
     }, [isCollapsed]);
 
+    if (pathname === '/login') return null;
+
     return (
         <div className="sidebar-container">
             <div className={`sidebar-main ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
